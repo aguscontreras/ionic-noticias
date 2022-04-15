@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
+import { IonInfiniteScroll } from '@ionic/angular';
 import { Article } from '../../interfaces';
 import { NewsService } from '../../services/news.service';
 
@@ -22,21 +23,39 @@ export class Tab2Page implements OnInit {
 
   public articles: Article[] = [];
 
+  @ViewChild(IonInfiniteScroll, { static: true })
+  infiniteScroll: IonInfiniteScroll;
+
   constructor(private newsService: NewsService) {}
 
   ngOnInit(): void {
     this.getArticles();
   }
 
-  segmentChanged(event: any): void {
-    console.log(event.detail.value);
-    this.selectedCategory = event.detail.value;
+  segmentChanged(event: Event): void {
+    this.selectedCategory = (event as CustomEvent).detail.value;
     this.getArticles();
   }
 
-  getArticles(): void {
+  loadData(): void {
     this.newsService
-      .getTopHeadlinesByCategory(this.selectedCategory)
+      .getTopHeadlinesByCategory(this.selectedCategory, true)
+      .subscribe({
+        next: (articles) => {
+          if (articles.length === this.articles.length) {
+            this.infiniteScroll.disabled = true;
+            return;
+          }
+
+          this.articles = articles;
+          this.infiniteScroll.complete();
+        },
+      });
+  }
+
+  getArticles(loadMore?: boolean): void {
+    this.newsService
+      .getTopHeadlinesByCategory(this.selectedCategory, loadMore)
       .subscribe({
         next: (articles) => {
           this.articles = [...articles];
